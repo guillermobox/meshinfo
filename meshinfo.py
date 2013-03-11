@@ -62,9 +62,10 @@ def process(filename, metrics):
         print 'Unrecognied file format'
         return
 
+    print '%15s %13s %13s %13s %13s'%('metric','mean', 'std', 'min', 'max')
     for (key, array) in results.iteritems():
         array = numpy.array(array)
-        print key, len(array), array.mean(), array.std(), array.min(), array.max()
+        print '%15s %13.6e %13.6e %13.6e %13.6e'%(key, array.mean(), array.std(), array.min(), array.max())
 
 def main():
     if len(sys.argv)<2:
