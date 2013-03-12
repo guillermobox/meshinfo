@@ -109,11 +109,16 @@ int main(int argc, char** argv){
         }
     };
     
-    struct st_fileparser * fp = find_fileparser( argv[1], f, 2);
+    char * filename;
+    struct st_fileparser * fp;
+    int argi;
+    for( argi=1; argi<argc; argi++ ){
+        filename = argv[argi];
+        fp = find_fileparser( filename, f, 2);
+    }
+
     if( fp==NULL )
         exit(EXIT_FAILURE);
-
-//    parse_file(argv[1], *fp);
 
     return 0;
 }
