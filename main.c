@@ -25,7 +25,8 @@ void apply_metric(int ndata, double * data, struct st_metric metric, double *res
     printf("Description: %s\n", metric.desc);
 
     for( i=0; i<ndata; i++){
-        result[i] = (*metric.fun)( &data[12*i], &data[12*i+3], &data[12*i+6], &data[12*i+9]);
+        result[i] = (*metric.fun)( &data[0], &data[3], &data[6], &data[9]);
+        data = &data[12];
     }
 }
 
@@ -59,8 +60,8 @@ void parse_file(char *filename, struct st_fileparser parser){
         mean += res[i];
     }
     mean /= nelem;
-    printf("min   mean  max\n");
-    printf("%f    %f   %f\n", min, mean, max);
+    printf("%13s  %13s  %13s\n","min","mean","max");
+    printf("%13.6e  %13.6e   %13.6e\n", min, mean, max);
 }
 
 struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * fps, int ifps){
@@ -77,15 +78,14 @@ struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * f
             continue;
         }
         err = regexec(&r, filename, 0, NULL, 0);
+        regfree(&r);
         if( err ){
             continue;
         }
         printf("Match!\n");
-        regfree(&r);
         return fp;
     }
 
-    regfree(&r);
     return NULL;
 }
 
@@ -103,7 +103,7 @@ int main(int argc, char** argv){
             strdup(".*\\.msh$")
         },
         {
-            &parse_gmsh,
+            &parse_red,
             strdup("PREPROCESOR Mesh file"),
             strdup(".*\\.red\\.dat$")
         }
@@ -115,10 +115,12 @@ int main(int argc, char** argv){
     for( argi=1; argi<argc; argi++ ){
         filename = argv[argi];
         fp = find_fileparser( filename, f, 2);
+        if( fp==NULL ){
+            fprintf(stderr, "I don't know this file format: %s\n", filename);
+            continue;
+        }
+        parse_file(filename, *fp);
     }
-
-    if( fp==NULL )
-        exit(EXIT_FAILURE);
 
     return 0;
 }
