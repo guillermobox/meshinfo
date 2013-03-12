@@ -25,6 +25,41 @@ def metric__determinant(v1, v2, v3, v4):
 
     return abs(temp1 - temp2)
 
+def volume(v1, v2, v3, v4):
+    'Volume of the element'
+
+    r1 = v2 - v1
+    r2 = v3 - v1
+    r3 = v4 - v1
+
+    t1 = numpy.cross(r2,r3)
+    return numpy.dot(r1, numpy.cross(r2,r3))/6.0
+
+def pos_area(a, b, c):
+    temp = 0.0
+
+    termino = (a[1]-c[1])*(b[2]-c[2]) - (a[2]-c[2])*(b[1]*c[1]);
+    temp += termino*termino;
+    termino = (a[2]-c[2])*(b[0]-c[0]) - (a[0]-c[0])*(b[2]*c[2]);
+    temp += termino*termino;
+    termino = (a[0]-c[0])*(b[1]-c[1]) - (a[1]-c[1])*(b[0]*c[0]);
+    temp += termino*termino;
+    return 0.5 * numpy.sqrt(temp)
+
+def metric__shewchuck(v1, v2, v3, v4):
+    'Shwechuck parameter, from the Johnathan Richard Shewchuck article'
+
+    areas = numpy.array([
+            pos_area(v1,v2,v3),
+            pos_area(v1,v2,v4),
+            pos_area(v1,v3,v4),
+            pos_area(v2,v3,v4) ])
+
+    num = abs(volume(v1,v2,v3,v4))
+    den = numpy.dot(areas, areas)**(3.0/4.0)
+
+    return 6.83852117077*num/den
+
 def parsefile_msh(filename):
     fh = open(filename, 'r')
     assert fh.readline().strip()=='$MeshFormat'
@@ -55,7 +90,7 @@ def parsefile_msh(filename):
         if int(sides)==4:
             tetra_nelem += 1
             vert = map(int, line.split())
-            elems.append( (nodes[v-1] for v in vert) )
+            elems.append( numpy.array( [nodes[v-1] for v in vert] ) )
 
     assert fh.readline().strip()=='$EndElements'
     fh.close()
@@ -63,7 +98,7 @@ def parsefile_msh(filename):
 
 def parsefile_red(filename):
     fh = open(filename, 'r')
-    fh.readline()
+    assert fh.readline().strip()==''
     nnodes = int(fh.readline())
 
     nodes = []
@@ -80,7 +115,7 @@ def parsefile_red(filename):
     coords = [None]*nelems
     for (i, line) in enumerate(fh.readlines()):
         vert = map(int, line.split())
-        coords[i] = (nodes[v] for v in vert)
+        coords[i] = numpy.array(nodes[v] for v in vert)
 
     fh.close()
     return coords
@@ -113,10 +148,13 @@ def main():
         print
         exit(1)
 
+    print
+    print "I'll apply these metrics:"
+    print
     metrics = {}
     for name in globals().keys():
         if name.startswith('metric__'):
-            print 'Found metric (%s): %s'%(name[8:], globals()[name].__doc__)
+            print '  %s\n%s'%(name[8:], globals()[name].__doc__)
             metrics[name[8:]] = globals()[name] 
 
     print
