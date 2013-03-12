@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-#define BUFFSIZE 256
+#define BUFFSIZE 1024
 
 int parse_gmsh(char * filename, double ** data, int * nelem){
 
@@ -11,7 +11,7 @@ int parse_gmsh(char * filename, double ** data, int * nelem){
 
     if( f==NULL ){
         perror("parse_gmsh");
-        return(1);
+        return 1;
     }
 
     char buffer[BUFFSIZE], * pbuffer;
@@ -69,4 +69,65 @@ int parse_gmsh(char * filename, double ** data, int * nelem){
 
     *data = elems;
     *nelem = tetranum-1;
+}
+
+
+int parse_red(char * filename, double ** data, int * nelem){
+    FILE * f = fopen(filename, "r");
+
+    if( f==NULL ){
+        perror("parse_red");
+        return 1;
+    }
+
+    char buffer[BUFFSIZE], * pbuffer;
+    int lineno;
+    int nnodes, nelems, i;
+    int nodenum, elemnum, elemtype, position, tetranum;
+    double * nodes, * elems;
+
+    lineno = 0;
+    while( fgets(buffer, BUFFSIZE, f)!=NULL ){
+        if( lineno==1 ){
+            pbuffer = buffer;
+            nnodes = strtol(pbuffer, NULL, 10);
+            nodes = malloc( nnodes*3*sizeof(double) );
+            fprintf(stderr, "Using %d nodes\n", nnodes);
+            nodenum = 0;
+
+        }else if( lineno > 1 && lineno <= 1+nnodes ){
+            pbuffer = buffer;
+            assert( strtol(pbuffer, &pbuffer, 10) == nodenum );
+            strtol(pbuffer, &pbuffer,10);
+            strtol(pbuffer, &pbuffer,10);
+            nodes[ 3*nodenum + 0 ] = strtod(pbuffer, &pbuffer);
+            nodes[ 3*nodenum + 1 ] = strtod(pbuffer, &pbuffer);
+            nodes[ 3*nodenum + 2 ] = strtod(pbuffer, &pbuffer);
+            nodenum += 1;
+
+        }else if( lineno == nnodes + 2 ){
+            pbuffer = buffer;
+            nelems = strtol(pbuffer, &pbuffer, 10);
+            elems = malloc ( nelems*12*sizeof(double) );
+            elemnum = 0;
+        }else if( lineno > nnodes + 2 && lineno <= nnodes + 2 + nelems){
+            pbuffer = buffer;
+            for( i=0; i<4; i++){
+                position = strtol(pbuffer, &pbuffer, 10);
+                memcpy( elems + 12*elemnum + 3*i, nodes + 3*position, 3*sizeof(double));
+            }
+            elemnum += 1;
+        }
+        lineno += 1;
+    }
+
+    printf("nodenum: %d\n", nodenum);
+    printf("Using %d elements\n", nelems);
+    printf("elemnum: %d\n", elemnum);
+
+    free(nodes);
+    fclose(f);
+    *data = elems;
+    *nelem = elemnum;
+
 }
