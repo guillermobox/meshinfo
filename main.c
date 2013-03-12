@@ -44,7 +44,7 @@ void parse_file(char *filename, struct st_fileparser parser){
     res = malloc(nelem*sizeof(double));
 
     struct st_metric m = {
-        &metric_determinant,
+        &metric_neta,
         strdup("Determinant"),
         strdup("Calculates the determinant of the function, just saying!") };
 
@@ -60,8 +60,8 @@ void parse_file(char *filename, struct st_fileparser parser){
         mean += res[i];
     }
     mean /= nelem;
-    printf("%13s  %13s  %13s\n","min","mean","max");
-    printf("%13.6e  %13.6e   %13.6e\n", min, mean, max);
+    printf("%13s %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
+    printf("%13s %13.6e  %13.6e  %13.6e\n", m.name, min, mean, max);
 }
 
 struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * fps, int ifps){
