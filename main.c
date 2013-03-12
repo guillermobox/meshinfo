@@ -63,6 +63,32 @@ void parse_file(char *filename, struct st_fileparser parser){
     printf("%f    %f   %f\n", min, mean, max);
 }
 
+struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * fps, int ifps){
+    regex_t r;
+    struct st_fileparser * fp;
+    int i, err;
+
+    for(i=0; i<ifps; i++){
+        fp = fps + i;
+        printf("Trying: %s [%s]\n", fp->name, fp->regex_string);
+        err = regcomp( &r, fp->regex_string, 0);
+        if( err ){
+            fprintf(stderr, "Regex compilation failed!");
+            continue;
+        }
+        err = regexec(&r, filename, 0, NULL, 0);
+        if( err ){
+            continue;
+        }
+        printf("Match!\n");
+        regfree(&r);
+        return fp;
+    }
+
+    regfree(&r);
+    return NULL;
+}
+
 int main(int argc, char** argv){
 
     if( argc<2 ){
@@ -70,26 +96,24 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    struct st_fileparser f = {
-        &parse_gmsh, 
-        strdup("GMSH Mesh file"),
-        strdup(".*\\.msh$")
-        };
+    struct st_fileparser f[] = {
+        {
+            &parse_gmsh, 
+            strdup("GMSH Mesh file"),
+            strdup(".*\\.msh$")
+        },
+        {
+            &parse_gmsh,
+            strdup("PREPROCESOR Mesh file"),
+            strdup(".*\\.red\\.dat$")
+        }
+    };
     
-    /*
-    regex_t r;
-    printf("%d\n", regcomp( &r, ".*\\.msh$", 0));
-    switch(regexec(&r, "galleta.msh", 0, NULL, 0)){
-        case 0:
-            printf("Match!");
-            break;
-        default:
-            printf("mismatch!");
-            break;
-    }
-    regfree(&r);
-    */
-    parse_file(argv[1], f);
+    struct st_fileparser * fp = find_fileparser( argv[1], f, 2);
+    if( fp==NULL )
+        exit(EXIT_FAILURE);
+
+//    parse_file(argv[1], *fp);
 
     return 0;
 }
