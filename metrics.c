@@ -101,3 +101,26 @@ double metric_neta(double *a, double *b, double *c, double *d){
 
     return num/den;
 }
+
+double metric_rho(double *a, double *b, double *c, double *d){
+#define MAX(a,b) ( (a)>(b) )? (a): (b)
+#define MIN(a,b) ( (a)<(b) )? (a): (b)
+
+    double min, max;
+    double l;
+
+    length(a,b,&l);
+    min = l; max = l;
+
+    length(a,c,&l); min = MIN(min, l); max = MAX(max, l);
+    length(a,d,&l); min = MIN(min, l); max = MAX(max, l);
+    length(b,c,&l); min = MIN(min, l); max = MAX(max, l);
+    length(b,d,&l); min = MIN(min, l); max = MAX(max, l);
+    length(c,d,&l); min = MIN(min, l); max = MAX(max, l);
+
+    return min/max;
+}
+    
+double metric_dummyone(double *a, double *b, double *c, double *d){
+    return 1.0;
+}

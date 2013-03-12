@@ -29,7 +29,6 @@ int parse_gmsh(char * filename, double ** data, int * nelem){
             pbuffer = buffer;
             nnodes = strtol(pbuffer, NULL, 10);
             nodes = malloc( nnodes*3*sizeof(double) );
-            fprintf(stderr, "Using %d nodes\n", nnodes);
             nodenum = 1;
         }else if( lineno > 4 && lineno <= 4+nnodes ){
             pbuffer = buffer;
@@ -92,7 +91,6 @@ int parse_red(char * filename, double ** data, int * nelem){
             pbuffer = buffer;
             nnodes = strtol(pbuffer, NULL, 10);
             nodes = malloc( nnodes*3*sizeof(double) );
-            fprintf(stderr, "Using %d nodes\n", nnodes);
             nodenum = 0;
 
         }else if( lineno > 1 && lineno <= 1+nnodes ){
@@ -120,10 +118,6 @@ int parse_red(char * filename, double ** data, int * nelem){
         }
         lineno += 1;
     }
-
-    printf("nodenum: %d\n", nodenum);
-    printf("Using %d elements\n", nelems);
-    printf("elemnum: %d\n", elemnum);
 
     free(nodes);
     fclose(f);

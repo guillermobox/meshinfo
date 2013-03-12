@@ -12,66 +12,99 @@ struct st_metric {
     char * name;
     char * desc;
 };
+#define METRIC(a,b,c) {&a, strdup(b), strdup(c)}
 
 struct st_fileparser {
     int (*fun)(char *, double**, int*);
     char * name;
     char * regex_string;
 };
+#define FILEPARSER(a,b,c) {&a, strdup(b), strdup(c)}
 
-void apply_metric(int ndata, double * data, struct st_metric metric, double *result){
-    int i;
-    printf("Aplying metric: %s\n", metric.name);
-    printf("Description: %s\n", metric.desc);
+static void printcenter(char * str, char sep){
+    char line[81];
+    int m, i, left, right;
+
+    m = strlen(str);
+
+    left = (80-m-1)/2;
+    right = 80-left-m-2;
+
+    for(i=0; i<left; i++){
+        line[i] = sep;
+    }
+    for(i=0; i<right; i++){
+        line[79-i] = sep;
+    }
+    line[left] = ' ';
+    line[79-right] = ' ';
+
+    line[80] = '\0';
+
+    strncpy( &(line[left+1]), str, m);
+    puts(line);
+}
+
+static void header(char *str){
+    puts("");
+    printcenter(str, '=');
+    puts("");
+}
+
+static void apply_metrics(int ndata, double * data, int nmetrics, struct st_metric * metrics, double *result){
+    int i, im;
 
     for( i=0; i<ndata; i++){
-        result[i] = (*metric.fun)( &data[0], &data[3], &data[6], &data[9]);
+        for( im=0; im<nmetrics; im++ ){
+            result[nmetrics*i + im] = (*(metrics[im].fun))( &data[0], &data[3], &data[6], &data[9]);
+        }
         data = &data[12];
     }
 }
 
-void parse_file(char *filename, struct st_fileparser parser){
+static void process_file(char *filename, struct st_fileparser parser, int nmetrics, struct st_metric * metrics){
     double *data;
     double * res;
     int nelem;
     int ret;
+    int im;
 
-    printf("Parsing file: %s\n", filename);
-    printf("Using parser: %s\n", parser.name);
-    printf("With regex: %s\n", parser.regex_string);
+    header(filename);
 
     ret = (*parser.fun)(filename, &data, &nelem);
-    res = malloc(nelem*sizeof(double));
 
-    struct st_metric m = {
-        &metric_neta,
-        strdup("Determinant"),
-        strdup("Calculates the determinant of the function, just saying!") };
+    res = malloc( nelem*nmetrics*sizeof(double) );
 
-    apply_metric(nelem, data, m, res);
-    double min, max, mean;
-    min = res[0];
-    max = res[0];
-    mean = 0.0;
-    int i;
-    for(i=0; i<nelem; i++){
-        if( res[i]<min ) min = res[i];
-        if( res[i]>max ) max = res[i];
-        mean += res[i];
+    apply_metrics(nelem, data, nmetrics, metrics, res);
+
+    printf("%13s  %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
+
+    for(im=0; im<nmetrics; im++){
+        double min, max, mean;
+        int i;
+        min = res[im];
+        max = res[im];
+        mean = 0.0;
+        for(i=0; i<nelem; i++){
+            if( res[i*nmetrics+im]<min ) min = res[i*nmetrics + im];
+            if( res[i*nmetrics+im]>max ) max = res[i*nmetrics + im];
+            mean += res[i*nmetrics + im];
+        }
+        mean /= nelem;
+        printf("%13s  %13.6e  %13.6e  %13.6e\n", metrics[im].name, min, mean, max);
     }
-    mean /= nelem;
-    printf("%13s %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
-    printf("%13s %13.6e  %13.6e  %13.6e\n", m.name, min, mean, max);
+
+    free(res);
+    free(data);
 }
 
-struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * fps, int ifps){
+static struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * fps, int ifps){
     regex_t r;
     struct st_fileparser * fp;
     int i, err;
 
     for(i=0; i<ifps; i++){
         fp = fps + i;
-        printf("Trying: %s [%s]\n", fp->name, fp->regex_string);
         err = regcomp( &r, fp->regex_string, 0);
         if( err ){
             fprintf(stderr, "Regex compilation failed!");
@@ -82,11 +115,24 @@ struct st_fileparser * find_fileparser(char * filename, struct st_fileparser * f
         if( err ){
             continue;
         }
-        printf("Match!\n");
         return fp;
     }
 
     return NULL;
+}
+
+static void show_metrics(int nmetrics, struct st_metric * metrics){
+    int i;
+    header("METRICS DEFINED");
+    for(i=0; i<nmetrics; i++)
+        printf("  [%s] %s\n", metrics[i].name, metrics[i].desc);
+}
+
+static void show_parsers(int nparsers, struct st_fileparser *parsers){
+    int i;
+    header("PARSERS DEFINED");
+    for(i=0; i<nparsers; i++)
+        printf("  [%s] /%s/\n", parsers[i].name, parsers[i].regex_string);
 }
 
 int main(int argc, char** argv){
@@ -96,30 +142,35 @@ int main(int argc, char** argv){
         exit(EXIT_FAILURE);
     }
 
-    struct st_fileparser f[] = {
-        {
-            &parse_gmsh, 
-            strdup("GMSH Mesh file"),
-            strdup(".*\\.msh$")
-        },
-        {
-            &parse_red,
-            strdup("PREPROCESOR Mesh file"),
-            strdup(".*\\.red\\.dat$")
-        }
+    struct st_fileparser parsers[] = {
+        FILEPARSER(parse_gmsh,  "GMSH Mesh file",           ".*\\.msh$"),
+        FILEPARSER(parse_red,   "PREPROCESDOR Mesh file",   ".*\\.red\\.dat$")
     };
-    
+    int nparsers = sizeof(parsers) / sizeof(struct st_fileparser);
+
+    struct st_metric metrics[] = {
+        METRIC(metric_determinant,  "determinant",  "Calculates the determinant of the vertices"),
+        METRIC(metric_shewchuk,     "shewchuk",     "Shewchuk parameter from 2002 paper"),
+        METRIC(metric_dummyone,     "dummy",        "Dummy: returns 1 all the time"),
+        METRIC(metric_neta,         "neta",         "Neta parameter from gmsh"),
+        METRIC(metric_rho,          "rho",          "Rho parameter form gmsh"),
+    };
+    int nmetrics = sizeof(metrics) / sizeof(struct st_metric);
+
+    show_metrics(nmetrics, metrics);
+    show_parsers(nparsers, parsers);
+
     char * filename;
     struct st_fileparser * fp;
     int argi;
     for( argi=1; argi<argc; argi++ ){
         filename = argv[argi];
-        fp = find_fileparser( filename, f, 2);
+        fp = find_fileparser(filename, parsers, nparsers);
         if( fp==NULL ){
             fprintf(stderr, "I don't know this file format: %s\n", filename);
             continue;
         }
-        parse_file(filename, *fp);
+        process_file(filename, *fp, nmetrics, metrics);
     }
 
     return 0;
