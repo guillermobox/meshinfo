@@ -96,7 +96,7 @@ int parse_red(char * filename, double ** data, int * nelem){
         }else if( lineno > 1 && lineno <= 1+nnodes ){
             pbuffer = buffer;
             assert( strtol(pbuffer, &pbuffer, 10) == nodenum );
-            strtol(pbuffer, &pbuffer,10);
+            strtol(pbuffer, &pbuffer,10); 
             strtol(pbuffer, &pbuffer,10);
             nodes[ 3*nodenum + 0 ] = strtod(pbuffer, &pbuffer);
             nodes[ 3*nodenum + 1 ] = strtod(pbuffer, &pbuffer);
@@ -108,6 +108,7 @@ int parse_red(char * filename, double ** data, int * nelem){
             nelems = strtol(pbuffer, &pbuffer, 10);
             elems = malloc ( nelems*12*sizeof(double) );
             elemnum = 0;
+
         }else if( lineno > nnodes + 2 && lineno <= nnodes + 2 + nelems){
             pbuffer = buffer;
             for( i=0; i<4; i++){
@@ -123,5 +124,4 @@ int parse_red(char * filename, double ** data, int * nelem){
     fclose(f);
     *data = elems;
     *nelem = elemnum;
-
 }
