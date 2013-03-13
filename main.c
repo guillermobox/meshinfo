@@ -9,6 +9,7 @@
 #include "metrics.h"
 
 int flag_save;
+int flag_verbose;
 
 struct st_metric {
     double (*fun)(double*, double*, double*, double*);
@@ -153,18 +154,30 @@ static void show_parsers(int nparsers, struct st_fileparser *parsers){
         printf("  [%s] /%s/\n", parsers[i].name, parsers[i].regex_string);
 }
 
+static void usage(char *argv0){
+        printf("Usage: %s [options] <meshfile> [<meshfile> ...]\n", argv0);
+        printf("\n");
+        printf("Where options are one or more of those\n");
+        printf("   -s              Save the metrics in a file for each metric/mesh\n");
+        printf("   -l              List available metrics and parsers\n");
+        printf("   -h              Show this help\n");
+        printf("\n");
+        exit(EXIT_FAILURE);
+}
+
 int main(int argc, char** argv){
     int c;
 
-    if( argc<2 ){
-        printf("Usage: %s [options] <meshfile> [<meshfile> ...]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-
-    while( (c = getopt(argc, argv, "s")) != -1)
+    while( (c = getopt(argc, argv, "shl")) != -1)
         switch(c){
             case 's':
                 flag_save = 1;
+                break;
+            case 'h':
+                usage(argv[0]);
+                break;
+            case 'l':
+                flag_verbose = 1;
                 break;
             case '?':
                 if ( isprint(optopt))
@@ -175,6 +188,7 @@ int main(int argc, char** argv){
             default:
                 abort();
         }
+
 
     struct st_fileparser parsers[] = {
         FILEPARSER(parse_gmsh,  "GMSH Mesh file",           ".*\\.msh$"),
@@ -191,13 +205,20 @@ int main(int argc, char** argv){
     };
     int nmetrics = sizeof(metrics) / sizeof(struct st_metric);
 
-    show_metrics(nmetrics, metrics);
-    show_parsers(nparsers, parsers);
+    if( flag_verbose ){
+        show_metrics(nmetrics, metrics);
+        show_parsers(nparsers, parsers);
+        if( optind==argc ) 
+            exit(EXIT_SUCCESS);
+    }
+
+    if( optind==argc ) 
+        usage(argv[0]);
 
     char * filename;
     struct st_fileparser * fp;
     int argi;
-    for( argi = optind; argi<argc; argi++ ){
+    for( argi=optind; argi<argc; argi++ ){
         filename = argv[argi];
         fp = find_fileparser(filename, parsers, nparsers);
         if( fp==NULL ){
