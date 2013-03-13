@@ -38,21 +38,22 @@ static double positive_area(double *a, double *b, double *c){
 
 static double determinant(double *a, double *b, double *c, double *d){
     double t1,t2;
+    double t[3], u[3], v[3];
     int i;
 
     for(i=0; i<3; i++){
-        a[i] -= d[i];
-        b[i] -= d[i];
-        c[i] -= d[i];
+        t[i] = a[i] - d[i];
+        u[i] = b[i] - d[i];
+        v[i] = c[i] - d[i];
     }
 
-    t1 = a[0]*b[1]*c[2] +\
-         a[2]*b[0]*c[1] +\
-         a[1]*b[2]*c[0];
+    t1 = t[0]*u[1]*v[2] +\
+         t[2]*u[0]*v[1] +\
+         t[1]*u[2]*v[0];
 
-    t2 = a[2]*b[1]*c[0] +\
-         a[1]*b[0]*c[2] +\
-         a[0]*b[2]*c[1];
+    t2 = t[2]*u[1]*v[0] +\
+         t[1]*u[0]*v[2] +\
+         t[0]*u[2]*v[1];
 
     return t1-t2;
 }
