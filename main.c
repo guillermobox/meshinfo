@@ -57,17 +57,20 @@ static void header(char *str){
 
 static void apply_metrics(int ndata, double * data, int nmetrics, struct st_metric * metrics, double *result){
     int i, im;
+    double *presult;
 
+    presult = result;
     for( i=0; i<ndata; i++){
         for( im=0; im<nmetrics; im++ ){
-            result[nmetrics*i + im] = (*(metrics[im].fun))( &data[0], &data[3], &data[6], &data[9]);
+            *presult = (*(metrics[im].fun))( &data[0], &data[3], &data[6], &data[9]);
+            presult++;
         }
         data = &data[12];
     }
 }
 
 static void process_file(char *filename, struct st_fileparser parser, int nmetrics, struct st_metric * metrics){
-    double *data;
+    double * data;
     double * res;
     int nelem;
     int ret;
@@ -83,10 +86,12 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
 
     printf("%13s  %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
 
-
     for(im=0; im<nmetrics; im++){
         FILE * fh;
         char metric_filename[128];
+        double min, max, mean, metricval;
+        int i;
+
         strcpy(metric_filename, "metric.");
         strcat(metric_filename, metrics[im].name);
         strcat(metric_filename, ".");
@@ -94,17 +99,16 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
         if( flag_save )
             fh = fopen(metric_filename, "w");
 
-        double min, max, mean;
-        int i;
         min = res[im];
         max = res[im];
         mean = 0.0;
         for(i=0; i<nelem; i++){
+            metricval = res[i*nmetrics + im];
             if( flag_save )
-                fprintf(fh, "%13.6e\n", res[i*nmetrics+im]);
-            if( res[i*nmetrics+im]<min ) min = res[i*nmetrics + im];
-            if( res[i*nmetrics+im]>max ) max = res[i*nmetrics + im];
-            mean += res[i*nmetrics + im];
+                fprintf(fh, "%13.6e\n", metricval);
+            if( metricval<min ) min = metricval;
+            if( metricval>max ) max = metricval;
+            mean += metricval;
         }
         mean /= nelem;
 
