@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
@@ -6,6 +7,8 @@
 #include <regex.h>
 #include "fileparsers.h"
 #include "metrics.h"
+
+int flag_save;
 
 struct st_metric {
     double (*fun)(double*, double*, double*, double*);
@@ -79,19 +82,34 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
 
     printf("%13s  %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
 
+
     for(im=0; im<nmetrics; im++){
+        FILE * fh;
+        char metric_filename[128];
+        strcpy(metric_filename, "metric.");
+        strcat(metric_filename, metrics[im].name);
+        strcat(metric_filename, ".");
+        strcat(metric_filename, filename);
+        if( flag_save )
+            fh = fopen(metric_filename, "w");
+
         double min, max, mean;
         int i;
         min = res[im];
         max = res[im];
         mean = 0.0;
         for(i=0; i<nelem; i++){
+            if( flag_save )
+                fprintf(fh, "%13.6e\n", res[i*nmetrics+im]);
             if( res[i*nmetrics+im]<min ) min = res[i*nmetrics + im];
             if( res[i*nmetrics+im]>max ) max = res[i*nmetrics + im];
             mean += res[i*nmetrics + im];
         }
         mean /= nelem;
+
         printf("%13s  %13.6e  %13.6e  %13.6e\n", metrics[im].name, min, mean, max);
+        if( flag_save )
+            fclose(fh);
     }
 
     free(res);
@@ -136,11 +154,27 @@ static void show_parsers(int nparsers, struct st_fileparser *parsers){
 }
 
 int main(int argc, char** argv){
+    int c;
 
     if( argc<2 ){
-        printf("Usage: %s <meshfile> [<meshfile> ...]\n", argv[0]);
+        printf("Usage: %s [options] <meshfile> [<meshfile> ...]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
+
+    while( (c = getopt(argc, argv, "s")) != -1)
+        switch(c){
+            case 's':
+                flag_save = 1;
+                break;
+            case '?':
+                if ( isprint(optopt))
+                    fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+                else
+                    fprintf( stderr, "Unknown character '``x%x'.\n", optopt);
+                return 1;
+            default:
+                abort();
+        }
 
     struct st_fileparser parsers[] = {
         FILEPARSER(parse_gmsh,  "GMSH Mesh file",           ".*\\.msh$"),
@@ -163,7 +197,7 @@ int main(int argc, char** argv){
     char * filename;
     struct st_fileparser * fp;
     int argi;
-    for( argi=1; argi<argc; argi++ ){
+    for( argi = optind; argi<argc; argi++ ){
         filename = argv[argi];
         fp = find_fileparser(filename, parsers, nparsers);
         if( fp==NULL ){
