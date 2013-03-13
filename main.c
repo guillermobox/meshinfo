@@ -5,8 +5,10 @@
 #include <string.h>
 #include <sys/types.h>
 #include <regex.h>
+#include <ctype.h>
 #include "fileparsers.h"
 #include "metrics.h"
+
 
 int flag_save;
 int flag_verbose;
@@ -73,23 +75,22 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
     double * data;
     double * res;
     int nelem;
-    int ret;
     int im;
 
     header(filename);
 
-    ret = (*parser.fun)(filename, &data, &nelem);
+    (*parser.fun)(filename, &data, &nelem);
 
     res = malloc( nelem*nmetrics*sizeof(double) );
 
     apply_metrics(nelem, data, nmetrics, metrics, res);
 
-    printf("%13s  %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX");
+    printf("%13s  %13s  %13s  %13s  %13s\n","METRIC","MIN","MEAN","MAX","SDEV");
 
     for(im=0; im<nmetrics; im++){
-        FILE * fh;
+        FILE * fh = NULL;
         char metric_filename[128];
-        double min, max, mean, metricval;
+        double min, max, mean, metricval, var;
         int i;
 
         strcpy(metric_filename, "metric.");
@@ -102,6 +103,7 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
         min = res[im];
         max = res[im];
         mean = 0.0;
+        var = 0.0;
         for(i=0; i<nelem; i++){
             metricval = res[i*nmetrics + im];
             if( flag_save )
@@ -109,10 +111,12 @@ static void process_file(char *filename, struct st_fileparser parser, int nmetri
             if( metricval<min ) min = metricval;
             if( metricval>max ) max = metricval;
             mean += metricval;
+            var += metricval*metricval;
         }
         mean /= nelem;
+        var = sqrt( var/nelem - mean*mean );
 
-        printf("%13s  %13.6e  %13.6e  %13.6e\n", metrics[im].name, min, mean, max);
+        printf("%13s  %13.6e  %13.6e  %13.6e  %13.6e\n", metrics[im].name, min, mean, max, var);
         if( flag_save )
             fclose(fh);
     }
@@ -193,7 +197,6 @@ int main(int argc, char** argv){
                 abort();
         }
 
-
     struct st_fileparser parsers[] = {
         FILEPARSER(parse_gmsh,  "GMSH Mesh file",           ".*\\.msh$"),
         FILEPARSER(parse_red,   "PREPROCESDOR Mesh file",   ".*\\.red\\.dat$")
@@ -201,19 +204,22 @@ int main(int argc, char** argv){
     int nparsers = sizeof(parsers) / sizeof(struct st_fileparser);
 
     struct st_metric metrics[] = {
-        METRIC(metric_determinant,  "determinant",  "Calculates the determinant of the vertices"),
+        METRIC(metric_volume,       "volume",       "Volume of the elements"),
         METRIC(metric_shewchuk,     "shewchuk",     "Shewchuk parameter from 2002 paper"),
-        METRIC(metric_dummyone,     "dummy",        "Dummy: returns 1 all the time"),
         METRIC(metric_neta,         "neta",         "Neta parameter from gmsh"),
         METRIC(metric_rho,          "rho",          "Rho parameter form gmsh"),
+        METRIC(metric_gamma,        "gamma",        "Gamma parameter from gmsh"),
+        METRIC(metric_alpha,        "alpha",        "Inscribed radius over max length"),
     };
     int nmetrics = sizeof(metrics) / sizeof(struct st_metric);
 
     if( flag_verbose ){
         show_metrics(nmetrics, metrics);
         show_parsers(nparsers, parsers);
-        if( optind==argc ) 
+        if( optind==argc ) {
+            printf("\n");
             exit(EXIT_SUCCESS);
+        }
     }
 
     if( optind==argc ) 
@@ -232,5 +238,7 @@ int main(int argc, char** argv){
         process_file(filename, *fp, nmetrics, metrics);
     }
 
-    return 0;
+
+    printf("\n");
+    return(EXIT_SUCCESS);
 }
