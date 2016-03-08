@@ -1,6 +1,6 @@
 
-CFLAGS = -O2 -Wall
-LDFLAGS = -lm
+CFLAGS = -O2 -Wall -g
+LDFLAGS = -lm -g
 
 ALL: meshinfo
 

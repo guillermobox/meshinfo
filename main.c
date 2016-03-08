@@ -13,12 +13,15 @@
 int flag_save;
 int flag_verbose;
 
+#define METRIC_OPTION_POSITIVE 0x01
+
 struct st_metric {
     double (*fun)(double*, double*, double*, double*);
     char * name;
     char * desc;
+    char opt;
 };
-#define METRIC(a,b,c) {&a, strdup(b), strdup(c)}
+#define METRIC(a,b,c,opt) {&a, strdup(b), strdup(c), opt}
 
 struct st_fileparser {
     int (*fun)(char *, double**, int*);
@@ -65,6 +68,9 @@ static void apply_metrics(int ndata, double * data, int nmetrics, struct st_metr
     for( i=0; i<ndata; i++){
         for( im=0; im<nmetrics; im++ ){
             *presult = (*(metrics[im].fun))( &data[0], &data[3], &data[6], &data[9]);
+	    if (metrics[im].opt & METRIC_OPTION_POSITIVE && *presult < 0) {
+		    printf("Error applying metric %s for element %d. Should be positive, but is not\n", metrics[im].name, i);
+	    }
             presult++;
         }
         data = &data[12];
@@ -204,12 +210,12 @@ int main(int argc, char** argv){
     int nparsers = sizeof(parsers) / sizeof(struct st_fileparser);
 
     struct st_metric metrics[] = {
-        METRIC(metric_volume,       "volume",       "Volume of the elements"),
-        METRIC(metric_shewchuk,     "shewchuk",     "Shewchuk parameter from 2002 paper"),
-        METRIC(metric_neta,         "neta",         "Neta parameter from gmsh"),
-        METRIC(metric_rho,          "rho",          "Rho parameter form gmsh"),
-        METRIC(metric_gamma,        "gamma",        "Gamma parameter from gmsh"),
-        METRIC(metric_alpha,        "alpha",        "Inscribed radius over max length"),
+        METRIC(metric_volume,       "volume",       "Volume of the elements", METRIC_OPTION_POSITIVE),
+        METRIC(metric_shewchuk,     "shewchuk",     "Shewchuk parameter from 2002 paper", 0),
+        METRIC(metric_neta,         "neta",         "Neta parameter from gmsh", 0),
+        METRIC(metric_rho,          "rho",          "Rho parameter form gmsh", 0),
+        METRIC(metric_gamma,        "gamma",        "Gamma parameter from gmsh", 0),
+        METRIC(metric_alpha,        "alpha",        "Inscribed radius over max length", 0),
     };
     int nmetrics = sizeof(metrics) / sizeof(struct st_metric);
 
